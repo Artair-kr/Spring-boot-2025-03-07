@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.CsrfConfig
 import org.springframework.security.config.annotation.web.configurers.HttpBasicConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -20,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.korit.example.filter.JwtAuthenticationFilter;
+import com.korit.example.service.implement.OAuth2UserServiceImplement;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,6 +42,7 @@ import lombok.RequiredArgsConstructor;
 public class WebSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final OAuth2UserServiceImplement oAuth2UserService;
     
     // Web Security 설정을 지정하는 메서드
     // @Bean:
@@ -91,12 +94,18 @@ public class WebSecurityConfig {
             // authenticated() : 인증된 모든 클라이언트가 접근할 수 있도록 지정
             // hasRole(권한) : 특정 권한을 가진 클라이언트만 접근할 수 있도록 지정
             // (매개변수로 전달하는 권한명은 ROLE_를 제거한 실제 권한명)
-            .requestMatchers("/basic", "/basic/**", "/security", "/security/**").permitAll()
+            .requestMatchers("/basic", "/basic/**", "/security", "/security/**", "/oauth2/**").permitAll()
             .requestMatchers(HttpMethod.PATCH).authenticated()
             .requestMatchers(HttpMethod.POST, "/user", "/user/**").hasRole("USER")
             // anyRequest(): 나머지 모든 요청에 대한 처리
             // .anyRequest().hasRole("ADMIN") : 가장 강한 요청처리, ADMIN권한 가지고 있는 것만 요청 처리
             .anyRequest().authenticated()
+          )
+
+          // Oauth2 인증 처리
+          .oauth2Login(oauth2 -> oauth2
+            .redirectionEndpoint(endPoint -> endPoint.baseUri("/oauth2/callback/*")) 
+            .userInfoEndpoint(endPoint -> endPoint.userService(oAuth2UserService))
           )
 
           // 인증 및 인가 과정에서 발생한 예외를 직접 처리
