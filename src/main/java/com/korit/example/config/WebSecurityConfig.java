@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.korit.example.filter.JwtAuthenticationFilter;
+import com.korit.example.handler.OAuth2SuccessHandler;
 import com.korit.example.service.implement.OAuth2UserServiceImplement;
 
 import jakarta.servlet.ServletException;
@@ -43,6 +44,7 @@ public class WebSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final OAuth2UserServiceImplement oAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
     
     // Web Security 설정을 지정하는 메서드
     // @Bean:
@@ -101,11 +103,16 @@ public class WebSecurityConfig {
             // .anyRequest().hasRole("ADMIN") : 가장 강한 요청처리, ADMIN권한 가지고 있는 것만 요청 처리
             .anyRequest().authenticated()
           )
-
-          // Oauth2 인증 처리
+          // OAuth2 인증 처리
           .oauth2Login(oauth2 -> oauth2
-            .redirectionEndpoint(endPoint -> endPoint.baseUri("/oauth2/callback/*")) 
+            // 사용자가 oauth2 인증을 위한 요청 URL 지정
+            .authorizationEndpoint(endPoint -> endPoint.baseUri("/security/sns"))
+            // oauth2 인증 완료 후 인증서버에서 들어오는 URL 지정
+            .redirectionEndpoint(endPoint -> endPoint.baseUri("/oauth2/callback/*"))
+            // oauth2 인증 완료 후 사용자 정보를 처리할 서비스 지정
             .userInfoEndpoint(endPoint -> endPoint.userService(oAuth2UserService))
+            // oauth2 서비스 처리 후 성공시 실행할 기능
+            .successHandler(oAuth2SuccessHandler)
           )
 
           // 인증 및 인가 과정에서 발생한 예외를 직접 처리
@@ -113,14 +120,14 @@ public class WebSecurityConfig {
             .authenticationEntryPoint(new FailAuthenticationEntryPoint())
           )
 
-          // 필터 등록 
-          // addFilterBefore(추가할필터 인스턴스, 특정필터 클래스) : 특정 필터 이전에 지정한 필터를 추가
+          // 필터 등록
+          // addFilterBefore(추가할필터인스턴스, 특정필터클래스객체): 특정 필터 이전에 지정한 필드를 추가
           .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         // 설정 완료
         return security.build();
 
-    }
+      }
 
     @Bean
     protected CorsConfigurationSource configurationSource() {
